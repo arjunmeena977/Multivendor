@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  PLACED
+  PAID
+  CANCELLED
+  COMPLETED
+}
+
+enum SettlementStatus {
+  PENDING
+  PAID
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  vendor   Vendor?
+  orders   Order[]
+}
+
+model Vendor {
+  id        String       @id @default(uuid())
+  userId    String       @unique
+  shopName  String       
+  status    VendorStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  products    Product[]
+  orderItems  OrderItem[]
+  earnings    Commission[]
+  settlements Settlement[]
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  vendorId    String
+  title       String
+  description String?
+  price       Decimal
+  stock       Int
+  status      ProductStatus @default(PENDING)
+  isVisible   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  customerId  String
+  totalAmount Decimal
+  status      OrderStatus @default(PLACED)
+  createdAt   DateTime    @default(now())
+
+  customer   User        @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  vendorId  String
+  qty       Int
+  unitPrice Decimal
+  lineTotal Decimal
+
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+
+  commission Commission?
+}
+
+model Commission {
+  id               String  @id @default(uuid())
+  orderItemId      String  @unique
+  commissionRate   Decimal // Percentage stored as value e.g., 10.0
+  commissionAmount Decimal
+  vendorEarning    Decimal
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+  // Optional: Link to vendor for easier querying, though OrderItem has it.
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+}
+
+model Settlement {
+  id              String           @id @default(uuid())
+  vendorId        String
+  periodStart     DateTime
+  periodEnd       DateTime
+  grossSales      Decimal
+  commissionTotal Decimal
+  netPayable      Decimal
+  status          SettlementStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime         @default(now())
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+}
