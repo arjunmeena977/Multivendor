@@ -11,25 +11,50 @@ const Navbar = () => {
     };
 
     return (
-        <nav style={{ padding: '1rem', background: '#333', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Link to="/" style={{ color: '#fff', textDecoration: 'none', fontSize: '1.2rem', fontWeight: 'bold' }}>MultiVendor Marketplace</Link>
+        <nav style={{
+            background: 'var(--surface-color)',
+            borderBottom: '1px solid var(--border-color)',
+            height: 'var(--nav-height)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            boxShadow: 'var(--shadow-sm)'
+        }}>
+            <div className="container" style={{ height: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2rem' }}>
+                <Link to="/" style={{ color: 'var(--primary-color)', textDecoration: 'none', fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+                    MultiVendor<span style={{ color: 'var(--text-main)' }}>Marketplace</span>
+                </Link>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-                {user ? (
-                    <>
-                        <span>Hello, {user.name} ({user.role})</span>
-                        {user.role === 'VENDOR' && <Link to="/vendor/dashboard" style={{ color: '#aaf' }}>Dashboard</Link>}
-                        {user.role === 'ADMIN' && <Link to="/admin/dashboard" style={{ color: '#aaf' }}>Dashboard</Link>}
-                        {user.role === 'CUSTOMER' && <Link to="/cart" style={{ color: '#aaf' }}>Cart</Link>}
-                        {user.role === 'CUSTOMER' && <Link to="/orders" style={{ color: '#aaf' }}>My Orders</Link>}
-                        <button onClick={handleLogout} style={{ background: '#f55', color: '#fff', border: 'none', padding: '0.3rem 0.8rem', cursor: 'pointer' }}>Logout</button>
-                    </>
-                ) : (
-                    <>
-                        <Link to="/login" style={{ color: '#fff' }}>Login</Link>
-                        <Link to="/register" style={{ color: '#fff' }}>Register</Link>
-                    </>
-                )}
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                    {user ? (
+                        <>
+                            <div className="flex items-center gap-2" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ width: '32px', height: '32px', background: 'var(--primary-color)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                    {user.name.charAt(0)}
+                                </div>
+                                <span style={{ display: 'none', '@media (min-width: 768px)': { display: 'inline' } }}>{user.name}</span>
+                            </div>
+
+                            <div className="flex gap-4">
+                                {user.role === 'VENDOR' && <Link to="/vendor/dashboard" style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>Dashboard</Link>}
+                                {user.role === 'ADMIN' && <Link to="/admin/dashboard" style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>Dashboard</Link>}
+                                {user.role === 'CUSTOMER' && <Link to="/cart" style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>Cart</Link>}
+                                {user.role === 'CUSTOMER' && <Link to="/orders" style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>My Orders</Link>}
+                            </div>
+
+                            <button onClick={handleLogout} style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                                Logout
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Link to="/login" style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Login</Link>
+                            <Link to="/register">
+                                <button style={{ padding: '0.4rem 1.2rem' }}>Register</button>
+                            </Link>
+                        </>
+                    )}
+                </div>
             </div>
         </nav>
     );

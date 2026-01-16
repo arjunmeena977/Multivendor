@@ -20,29 +20,27 @@ function App() {
   return (
     <>
       <Navbar />
-      <div style={{ padding: '2rem' }}>
-        <Routes>
-          <Route path="/" element={<Marketplace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+      <Routes>
+        <Route path="/" element={<Marketplace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-          <Route path="/vendor/dashboard" element={
-            <ProtectedRoute role="VENDOR"><VendorDashboard /></ProtectedRoute>
-          } />
+        <Route path="/vendor/dashboard" element={
+          <ProtectedRoute role="VENDOR"><VendorDashboard /></ProtectedRoute>
+        } />
 
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>
-          } />
+        <Route path="/admin/dashboard" element={
+          <ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>
+        } />
 
-          <Route path="/cart" element={
-            <ProtectedRoute role="CUSTOMER"><Cart /></ProtectedRoute>
-          } />
+        <Route path="/cart" element={
+          <ProtectedRoute role="CUSTOMER"><Cart /></ProtectedRoute>
+        } />
 
-          <Route path="/orders" element={
-            <ProtectedRoute role="CUSTOMER"><MyOrders /></ProtectedRoute>
-          } />
-        </Routes>
-      </div>
+        <Route path="/orders" element={
+          <ProtectedRoute role="CUSTOMER"><MyOrders /></ProtectedRoute>
+        } />
+      </Routes>
     </>
   );
 }
