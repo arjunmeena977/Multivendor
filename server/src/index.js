@@ -17,7 +17,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'https://multivendor-git-main-arjunmeenaofc-2566s-projects.vercel.app',
-    'https://multivendor-lv92.onrender.com'
+    'https://multivendor-lv92.onrender.com',
+    'https://multivendor-eosin.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
