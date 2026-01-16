@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const prisma = require('../prisma.client');
+const User = require('../models/user.model');
+const Vendor = require('../models/vendor.model');
 const { z } = require('zod');
 
 const registerSchema = z.object({
@@ -8,7 +9,6 @@ const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     role: z.enum(['VENDOR', 'CUSTOMER']),
-    // shopName is required only if role is VENDOR
     shopName: z.string().optional()
 });
 
@@ -20,36 +20,29 @@ const register = async (req, res) => {
             return res.status(400).json({ error: 'Shop Name is required for Vendors' });
         }
 
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const existingUser = await User.findOne({ email });
         if (existingUser) return res.status(400).json({ error: 'Email already exists' });
 
         const passwordHash = await bcrypt.hash(password, 10);
 
-        const result = await prisma.$transaction(async (prisma) => {
-            const user = await prisma.user.create({
-                data: {
-                    name,
-                    email,
-                    passwordHash,
-                    role
-                }
-            });
-
-            if (role === 'VENDOR') {
-                await prisma.vendor.create({
-                    data: {
-                        userId: user.id,
-                        shopName,
-                        status: 'PENDING'
-                    }
-                });
-            }
-
-            return user;
+        const user = await User.create({
+            name,
+            email,
+            passwordHash,
+            role
         });
 
-        res.status(201).json({ message: 'User registered successfully', userId: result.id });
+        if (role === 'VENDOR') {
+            await Vendor.create({
+                userId: user.id,
+                shopName,
+                status: 'PENDING'
+            });
+        }
+
+        res.status(201).json({ message: 'User registered successfully', userId: user.id });
     } catch (error) {
+        console.error(error);
         res.status(400).json({ error: error.message || 'Registration failed' });
     }
 };
@@ -57,17 +50,19 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await prisma.user.findUnique({ where: { email }, include: { vendor: true } });
+
+        // Find user and explicitly populate vendor field
+        // Since we are using virtuals, we just need to make sure we access it correctly or use populate
+        // But populate works on refs.
+        // Let's use two queries for safety or populate if supported.
+        // Mongoose virtuals population:
+        const user = await User.findOne({ email }).populate('vendor');
 
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
-        // For vendors, check if approved to login? Requirement says "Vendor login -> dashboard access".
-        // Usually they can login but might see pending status. 
-
-        // Payload
         const token = jwt.sign(
             { userId: user.id, role: user.role, vendorId: user.vendor?.id },
             process.env.JWT_SECRET,
@@ -76,6 +71,7 @@ const login = async (req, res) => {
 
         res.json({ token, user: { id: user.id, name: user.name, role: user.role, vendorStatus: user.vendor?.status } });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Login failed' });
     }
 };

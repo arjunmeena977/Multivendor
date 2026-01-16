@@ -1,4 +1,6 @@
-const prisma = require('../prisma.client');
+const Order = require('../models/order.model');
+const Product = require('../models/product.model');
+const Commission = require('../models/commission.model');
 const { z } = require('zod');
 
 const orderSchema = z.object({
@@ -15,94 +17,78 @@ const createOrder = async (req, res) => {
         const { items } = orderSchema.parse(req.body);
         const userId = req.user.userId;
 
-        // Use transaction for consistency
-        const result = await prisma.$transaction(async (prisma) => {
-            let totalAmount = 0;
-            const orderItems = [];
+        let totalAmount = 0;
+        const orderItemsData = [];
 
-            for (const item of items) {
-                const product = await prisma.product.findUnique({ where: { id: item.productId } });
+        // 1. Validate and prepare
+        for (const item of items) {
+            const product = await Product.findById(item.productId);
 
-                if (!product) throw new Error(`Product ${item.productId} not found`);
-                if (product.status !== 'APPROVED' || !product.isVisible) {
-                    throw new Error(`Product ${product.title} is not available`);
-                }
-                if (product.stock < item.qty) {
-                    throw new Error(`Insufficient stock for ${product.title}`);
-                }
-
-                // Decrement stock
-                await prisma.product.update({
-                    where: { id: product.id },
-                    data: { stock: product.stock - item.qty }
-                });
-
-                const unitPrice = parseFloat(product.price);
-                const lineTotal = unitPrice * item.qty;
-                totalAmount += lineTotal;
-
-                orderItems.push({
-                    product,
-                    qty: item.qty,
-                    unitPrice,
-                    lineTotal
-                });
+            if (!product) throw new Error(`Product ${item.productId} not found`);
+            if (product.status !== 'APPROVED' || !product.isVisible) {
+                throw new Error(`Product ${product.title} is not available`);
+            }
+            if (product.stock < item.qty) {
+                throw new Error(`Insufficient stock for ${product.title}`);
             }
 
-            // Create Order
-            const order = await prisma.order.create({
-                data: {
-                    customerId: userId,
-                    totalAmount,
-                    status: 'PLACED'
-                }
+            // Decrement stock immediately (optimistic)
+            product.stock -= item.qty;
+            await product.save();
+
+            const unitPrice = parseFloat(product.price);
+            const lineTotal = unitPrice * item.qty;
+            totalAmount += lineTotal;
+
+            orderItemsData.push({
+                productId: product._id,
+                vendorId: product.vendorId,
+                qty: item.qty,
+                unitPrice,
+                lineTotal
             });
+        }
 
-            // Create Order Items & Commission Snapshots
-            for (const item of orderItems) {
-                const createdItem = await prisma.orderItem.create({
-                    data: {
-                        orderId: order.id,
-                        productId: item.product.id,
-                        vendorId: item.product.vendorId, // Important for scoping
-                        qty: item.qty,
-                        unitPrice: item.unitPrice,
-                        lineTotal: item.lineTotal
-                    }
-                });
-
-                // Snapshot Commission
-                const commissionAmount = item.lineTotal * COMMISSION_RATE;
-                const vendorEarning = item.lineTotal - commissionAmount;
-
-                await prisma.commission.create({
-                    data: {
-                        orderItemId: createdItem.id,
-                        vendorId: item.product.vendorId,
-                        commissionRate: COMMISSION_RATE * 100, // store as percentage e.g. 10
-                        commissionAmount,
-                        vendorEarning
-                    }
-                });
-            }
-
-            return order;
+        // 2. Create Order
+        const order = await Order.create({
+            customerId: userId,
+            totalAmount,
+            status: 'PLACED',
+            items: orderItemsData
         });
 
-        res.status(201).json(result);
+        // 3. Create Commissions
+        // Iterate over the items in the *created* order to get their subdocument IDs if needed, 
+        // or just use the logic loop.
+        // My Order schema has `items` as an array of subdocuments.
+        // Mongoose assigns _id to subdocuments automatically.
+
+        for (const item of order.items) {
+            const commissionAmount = item.lineTotal * COMMISSION_RATE;
+            const vendorEarning = item.lineTotal - commissionAmount;
+
+            await Commission.create({
+                orderId: order._id,
+                orderItemId: item._id, // References the subdocument in Order
+                vendorId: item.vendorId,
+                commissionRate: COMMISSION_RATE * 100,
+                commissionAmount,
+                vendorEarning
+            });
+        }
+
+        res.status(201).json(order);
     } catch (error) {
-        console.error(error);
+        console.error('Order Creation Error:', error);
         res.status(400).json({ error: error.message || 'Order failed' });
     }
 };
 
 const getMyOrders = async (req, res) => {
     try {
-        const orders = await prisma.order.findMany({
-            where: { customerId: req.user.userId },
-            include: { items: { include: { product: true } } },
-            orderBy: { createdAt: 'desc' }
-        });
+        const orders = await Order.find({ customerId: req.user.userId })
+            .populate('items.productId')
+            .sort({ createdAt: -1 });
         res.json(orders);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch orders' });

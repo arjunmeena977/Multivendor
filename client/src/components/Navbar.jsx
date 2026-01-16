@@ -32,7 +32,7 @@ const Navbar = () => {
                                 <div style={{ width: '32px', height: '32px', background: 'var(--primary-color)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                                     {user.name.charAt(0)}
                                 </div>
-                                <span style={{ display: 'none', '@media (min-width: 768px)': { display: 'inline' } }}>{user.name}</span>
+                                <span className="hidden-mobile">{user.name}</span>
                             </div>
 
                             <div className="flex gap-4">
