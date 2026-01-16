@@ -13,7 +13,16 @@ const publicRoutes = require('./routes/public.routes');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://multivendor-git-main-arjunmeenaofc-2566s-projects.vercel.app',
+    'https://multivendor-lv92.onrender.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Routes
